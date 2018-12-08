@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">SimpleMovieApp</string>
+    <string name="movie_list">Movies</string>
+    <string name="ex_id">id</string>
+    <string name="ex_title">title</string>
+    <string name="search_title">Search...</string>
+    <string name="ex_poster">poster</string>
 </resources>
