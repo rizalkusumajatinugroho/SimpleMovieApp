@@ -3,6 +3,7 @@ package com.smu.simplemovieapp.adapter;
 import android.media.Image;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -63,8 +64,10 @@ public class MovieAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                     totalItemCount = linearLayoutManager.getItemCount();
                     lastVisibleItem = linearLayoutManager
                             .findLastVisibleItemPosition();
-                    if (!loading && totalItemCount <= (lastVisibleItem + visibleThreshold)) {
 
+
+                    if (!mainView.isNetworkAvailable())loading = false;
+                    if (!loading && totalItemCount <= (lastVisibleItem + visibleThreshold)) {
                         mainView.onLoadMore();
 
                         loading = true;

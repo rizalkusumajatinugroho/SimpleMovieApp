@@ -17,4 +17,6 @@ public interface MainView {
     public void dismissLoading();
     public void onItemClick(MovieHeader movieHeader);
     public void onLoadMore();
+    public boolean isNetworkAvailable();
+
 }

@@ -1,29 +1,42 @@
 package com.smu.simplemovieapp.view;
 
 import android.app.Dialog;
+import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.os.Handler;
+import android.os.Parcelable;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.DividerItemDecoration;
+import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.Window;
+import android.widget.CompoundButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.Switch;
 import android.widget.Toast;
 
 import com.smu.simplemovieapp.R;
 import com.smu.simplemovieapp.adapter.MovieAdapter;
 import com.smu.simplemovieapp.db.DA_movie_header;
+import com.smu.simplemovieapp.db.DA_search_history;
 import com.smu.simplemovieapp.model.MovieHeader;
 import com.smu.simplemovieapp.model.MovieResource;
+import com.smu.simplemovieapp.model.SearchHistory;
 import com.smu.simplemovieapp.presenter.MainPresenter;
 import com.squareup.picasso.Picasso;
 
@@ -38,7 +51,9 @@ public class MainActivity extends AppCompatActivity implements MainView {
     private MovieAdapter movieAdapter;
     private List<MovieHeader> movies = new ArrayList<>();
     private Dialog dialog;
-
+    private static Bundle state = new Bundle();;
+    private Parcelable mListState;
+    private final String LIST_STATE_KEY = "list";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,10 +66,9 @@ public class MainActivity extends AppCompatActivity implements MainView {
         setSupportActionBar(toolbar);
 
         presenter = new MainPresenter(this);
-
-
-
         linearLayoutManager = new LinearLayoutManager(this);
+
+        linearLayoutManager.setOrientation(LinearLayout.VERTICAL);
         listMovie.setLayoutManager(linearLayoutManager);
 
         movieAdapter = new MovieAdapter(movies, listMovie, this);
@@ -69,12 +83,28 @@ public class MainActivity extends AppCompatActivity implements MainView {
         menuInflater.inflate(R.menu.search_menu, menu);
 
         MenuItem searchView = menu.findItem(R.id.search);
+        MenuItem serviceDownload = menu.findItem(R.id.service);
+        final Intent intent = new Intent(this, DownloadService.class);
+
+        Switch mySwitch = serviceDownload.getActionView().findViewById(R.id.switchForActionBar);
+        mySwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                // do something based on isChecked
+                if (isChecked){
+                    startService(intent);
+                }else {
+                    stopService(intent);
+                }
+            }
+        });
+
         SearchView searchViewActionBar = (SearchView) searchView.getActionView();
 
         searchViewActionBar.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
-                presenter.getMovie(query);
+                presenter.getMovie(query, MainActivity.this);
                 return false;
             }
 
@@ -94,10 +124,23 @@ public class MainActivity extends AppCompatActivity implements MainView {
     }
 
     @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        mListState = listMovie.getLayoutManager().onSaveInstanceState();
+        state.putParcelable(LIST_STATE_KEY, mListState);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        if(state != null)
+            mListState = state.getParcelable(LIST_STATE_KEY);
+    }
+
+    @Override
     public void showList(List<MovieHeader> movieResource) {
         movieAdapter.setLoaded();
         if (movieResource != null) {
-            insertDataHeader(movieResource);
             movies.clear();
             movies.addAll(movieResource);
             movieAdapter.notifyDataSetChanged();
@@ -108,16 +151,10 @@ public class MainActivity extends AppCompatActivity implements MainView {
     public void showMoreList(List<MovieHeader> movieResource) {
         movieAdapter.setLoaded();
         if (movieResource != null) {
-            insertDataHeader(movieResource);
             movies.remove(null);
             movies.addAll(movieResource);
             movieAdapter.notifyDataSetChanged();
         }
-    }
-
-    public void insertDataHeader(List<MovieHeader> movieResource){
-        DA_movie_header da_movie_header = new DA_movie_header(this);
-        da_movie_header.insert_or_replace(movieResource);
     }
 
     @Override
@@ -148,8 +185,61 @@ public class MainActivity extends AppCompatActivity implements MainView {
 
     @Override
     public void onLoadMore() {
-        presenter.getMoreMovie();
+        presenter.getMoreMovie(this);
     }
 
 
+    @Override
+    public boolean isNetworkAvailable() {
+        ConnectivityManager manager =
+                (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = manager.getActiveNetworkInfo();
+        boolean isAvailable = false;
+        if (networkInfo != null && networkInfo.isConnected()) {
+            // Network is present and connected
+            isAvailable = true;
+        }
+        return isAvailable;
+    }
+
+
+
+    @Override
+    public void onResume(){
+        super.onResume();
+        if (mListState != null) {
+            listMovie.getLayoutManager().onRestoreInstanceState(mListState);
+        }
+        linearLayoutManager = new LinearLayoutManager(this);
+
+        linearLayoutManager.setOrientation(LinearLayout.VERTICAL);
+        listMovie.setLayoutManager(linearLayoutManager);
+
+        if(this.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT){
+            listMovie.setLayoutManager(new GridLayoutManager(this, 1));
+            Log.d("debug_rizal", " on portrait");
+        }else{
+            Log.d("debug_rizal", " on landscape");
+            listMovie.setLayoutManager(new GridLayoutManager(this, 2));
+        }
+
+        movieAdapter = new MovieAdapter(movies, listMovie, this);
+        listMovie.setAdapter(movieAdapter);
+
+
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            listMovie.setLayoutManager(new GridLayoutManager(this, 2));
+            movieAdapter = new MovieAdapter(movies, listMovie, this);
+            listMovie.setAdapter(movieAdapter);
+        } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT){
+            listMovie.setLayoutManager(new GridLayoutManager(this, 1));
+            movieAdapter = new MovieAdapter(movies, listMovie, this);
+            listMovie.setAdapter(movieAdapter);
+        }
+    }
 }

@@ -1,6 +1,9 @@
 package com.smu.simplemovieapp.view;
 
+import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.support.design.widget.CollapsingToolbarLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBar;
@@ -83,7 +86,7 @@ public class DetailMovie extends AppCompatActivity implements DetailView {
 
         presenter = new DetailPresenter(this);
 
-        presenter.getDetail(id);
+        presenter.getDetail(id, this);
     }
 
     @Override
@@ -114,6 +117,19 @@ public class DetailMovie extends AppCompatActivity implements DetailView {
         genre.clear();
         genre.addAll(movieDetail.getGenre());
         genreAdapter.notifyDataSetChanged();
+    }
+
+    @Override
+    public boolean isNetworkAvailable() {
+        ConnectivityManager manager =
+                (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = manager.getActiveNetworkInfo();
+        boolean isAvailable = false;
+        if (networkInfo != null && networkInfo.isConnected()) {
+            // Network is present and connected
+            isAvailable = true;
+        }
+        return isAvailable;
     }
 
 }

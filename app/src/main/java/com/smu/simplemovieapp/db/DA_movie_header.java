@@ -1,7 +1,9 @@
 package com.smu.simplemovieapp.db;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteStatement;
+import android.util.Log;
 
 import com.smu.simplemovieapp.model.MovieHeader;
 
@@ -21,7 +23,7 @@ public class DA_movie_header extends DB_base {
             "PRIMARY KEY(`imdbID`));";
     public static final String STATEMENT_DROP = "DROP TABLE IF EXISTS `" + TABLE_NAME + "`;";
     public static final String STATEMENT_INSERT_OR_REPLACE = "INSERT OR REPLACE INTO `" + TABLE_NAME + "` (" +
-            "`title`, `year`, `imdbID`, `type`, `poster`, " +
+            "`title`, `year`, `imdbID`, `type`, `poster` " +
             ") VALUES (" +
             "?, ?, ?, ?, ?" +
             ");";
@@ -56,6 +58,7 @@ public class DA_movie_header extends DB_base {
             for(MovieHeader value : vectors) {
                 int i = 1;
 
+                Log.d("debug_rizal", "imdbid : "+ value.getImdbID() +" ; title : " + value.getTitle());
                 sqliteStatement.bindString(i++, value.getTitle());
                 sqliteStatement.bindString(i++, value.getYear());
                 sqliteStatement.bindString(i++, value.getImdbID());
@@ -70,10 +73,75 @@ public class DA_movie_header extends DB_base {
             __sqliteDatabase.setTransactionSuccessful();
 
         } catch(Exception e) {
-
+            Log.d("debug_rizal", "insert header error : " + e.getMessage());
 
         } finally {
             __sqliteDatabase.endTransaction();
+            close();
+        }
+        return rtn;
+    }
+
+    public List<MovieHeader> getListSearch(String search_key, String offset) {
+        List<MovieHeader> rtn = new ArrayList<MovieHeader>();
+        try {
+            open();
+            String query = "SELECT `title`, `year`, `imdbID`, `type`, `poster`  " +
+                    " FROM " + TABLE_NAME + " c  " +
+                    " WHERE (c.title LIKE '%" + search_key + "%' ) ORDER BY year DESC, title ASC" +
+                    " LIMIT 10 OFFSET " + offset;
+
+
+            Log.d("debug_rizal", "query get search : " + query);
+            Cursor pos = __sqliteDatabase.rawQuery(query, null);
+            while (pos.moveToNext()) {
+                try {
+                    int i = 0;
+                    MovieHeader rec = new MovieHeader();
+
+                    rec.setTitle(pos.getString(i++));
+                    rec.setYear(pos.getString(i++));
+                    rec.setImdbID(pos.getString(i++));
+                    rec.setType(pos.getString(i++));
+                    rec.setPoster(pos.getString(i++));
+
+                    rtn.add(rec);
+                } catch (Exception e) {
+                }
+            }
+            pos.close();
+
+        } catch (Exception e) {
+
+        } finally {
+            close();
+        }
+        return rtn;
+    }
+
+    public int countListSearch(String search_key) {
+        int rtn = 0;
+        try {
+            open();
+            String query = "SELECT COUNT(*)  " +
+                    " FROM " + TABLE_NAME + " c  " +
+                    " WHERE (c.title LIKE '%" + search_key + "%' ) ";
+
+
+            Log.d("debug_rizal", "query count search : " + query);
+            Cursor pos = __sqliteDatabase.rawQuery(query, null);
+            if (pos.moveToNext()) {
+                try {
+                    int i = 0;
+                    rtn = pos.getInt(i++);
+                } catch (Exception e) {
+                }
+            }
+            pos.close();
+
+        } catch (Exception e) {
+
+        } finally {
             close();
         }
         return rtn;

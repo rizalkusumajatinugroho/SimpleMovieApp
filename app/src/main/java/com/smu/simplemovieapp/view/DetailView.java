@@ -9,4 +9,5 @@ import com.smu.simplemovieapp.model.MovieDetail;
 public interface DetailView {
 
     public void showDetail(MovieDetail movieDetail);
+    public boolean isNetworkAvailable();
 }
