@@ -1,13 +1,19 @@
 package com.smu.simplemovieapp.view;
 
+import android.Manifest;
+import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Parcelable;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -54,16 +60,22 @@ public class MainActivity extends AppCompatActivity implements MainView {
     private static Bundle state = new Bundle();;
     private Parcelable mListState;
     private final String LIST_STATE_KEY = "list";
+    private static final int REQUEST= 112;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+
+
         toolbar = findViewById(R.id.toolbar);
         listMovie = findViewById(R.id.movieList);
 
         toolbar.setTitle(getString(R.string.movie_list));
         setSupportActionBar(toolbar);
+
+        checkPermissionManifest();
 
         presenter = new MainPresenter(this);
         linearLayoutManager = new LinearLayoutManager(this);
@@ -217,9 +229,7 @@ public class MainActivity extends AppCompatActivity implements MainView {
 
         if(this.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT){
             listMovie.setLayoutManager(new GridLayoutManager(this, 1));
-            Log.d("debug_rizal", " on portrait");
         }else{
-            Log.d("debug_rizal", " on landscape");
             listMovie.setLayoutManager(new GridLayoutManager(this, 2));
         }
 
@@ -241,5 +251,57 @@ public class MainActivity extends AppCompatActivity implements MainView {
             movieAdapter = new MovieAdapter(movies, listMovie, this);
             listMovie.setAdapter(movieAdapter);
         }
+    }
+
+    public void checkPermissionManifest(){
+        if (Build.VERSION.SDK_INT >= 23) {
+            Log.d("TAG","@@@ IN IF Build.VERSION.SDK_INT >= 23");
+            String[] PERMISSIONS = {
+                    android.Manifest.permission.INTERNET,
+                    android.Manifest.permission.ACCESS_NETWORK_STATE
+
+            };
+
+
+            if (!hasPermissions(this, PERMISSIONS)) {
+                Log.d("TAG","@@@ IN IF hasPermissions");
+                ActivityCompat.requestPermissions((Activity) this, PERMISSIONS, REQUEST );
+            } else {
+                Log.d("TAG","@@@ IN ELSE hasPermissions");
+
+            }
+        } else {
+            Log.d("TAG","@@@ IN ELSE  Build.VERSION.SDK_INT >= 23");
+
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case REQUEST: {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Log.d("TAG","@@@ PERMISSIONS grant");
+
+                } else {
+                    Log.d("TAG","@@@ PERMISSIONS Denied");
+
+                    Toast.makeText(this, "PERMISSIONS Denied", Toast.LENGTH_LONG).show();
+                    finish();
+                }
+            }
+        }
+    }
+
+    private static boolean hasPermissions(Context context, String... permissions) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null && permissions != null) {
+            for (String permission : permissions) {
+                if (ActivityCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }
